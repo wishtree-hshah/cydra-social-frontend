@@ -1,0 +1,56 @@
+:root {
+  /* Colors */
+  --color-primary: #4299e1;
+  --color-primary-dark: #3182ce;
+  --color-primary-darker: #2c5282;
+
+  /* Text Colors */
+  --color-text-primary: #1a202c;
+  --color-text-secondary: #2d3748;
+  --color-text-muted: #4a5568;
+  --color-text-light: #718096;
+  --color-text-lighter: #a0aec0;
+
+  /* Background Colors */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f7fafc;
+  --color-bg-dark: #1a202c;
+  --color-bg-input: #f7fafc;
+
+  /* Border Colors */
+  --color-border-light: #e2e8f0;
+  --color-border-medium: #cbd5e0;
+
+  /* Error Colors */
+  --color-error: #e53e3e;
+  --color-error-bg: #fff5f5;
+  --color-error-border: #feb2b2;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(66, 153, 225, 0.3);
+  --shadow-lg: 0 6px 20px rgba(66, 153, 225, 0.4);
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+  --gradient-primary-hover: linear-gradient(135deg, #3182ce 0%, #2c5282 100%);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--color-bg-primary);
+}
+
+#root {
+  min-height: 100vh;
+}

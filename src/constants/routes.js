@@ -14,5 +14,8 @@ export const ROUTES = {
 
     // Main app routes
     DASHBOARD: '/dashboard',
+    CREATE_POST: '/create-post',
+    CONTENT_LIBRARY: '/content-library',
+    SOCIAL_SETTINGS: '/social-settings',
     HOME: '/',
 };

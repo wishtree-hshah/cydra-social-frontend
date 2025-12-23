@@ -167,13 +167,13 @@ function Login() {
                         )}
                     </div>
 
-                    <div className="form-footer">
+                    {/* <div className="form-footer">
                         <label className="checkbox-label">
                             <input type="checkbox" />
                             <span>Remember me</span>
                         </label>
                         <a href="#" className="forgot-link">Forgot password?</a>
-                    </div>
+                    </div> */}
 
                     <button
                         type="submit"

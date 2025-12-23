@@ -245,12 +245,12 @@ function Register() {
                         )}
                     </div>
 
-                    <div className="terms-agreement">
+                    {/* <div className="terms-agreement">
                         <label className="checkbox-label">
                             <input type="checkbox" required />
                             <span>I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></span>
                         </label>
-                    </div>
+                    </div> */}
 
                     <button
                         type="submit"

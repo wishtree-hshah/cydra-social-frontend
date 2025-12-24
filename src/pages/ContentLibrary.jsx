@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../constants/routes';
-import { postAPI } from '../config/api';
+import { postAPI, socialMediaAPI } from '../config/api';
 import { useToast } from '../context/ToastContext';
 import ConfirmationModal from '../components/ConfirmationModal';
 import './ContentLibrary.css';
@@ -13,9 +13,14 @@ function ContentLibrary() {
     const [posts, setPosts] = useState([]);
     const [selectedPost, setSelectedPost] = useState(null);
     const [editPost, setEditPost] = useState(null);
-    const [editContent, setEditContent] = useState('');
-    const [editImageUrl, setEditImageUrl] = useState('');
+    const [editPostDetails, setEditPostDetails] = useState(null);
+    const [editTopic, setEditTopic] = useState('');
+    const [editTone, setEditTone] = useState('');
+    const [editHashtag, setEditHashtag] = useState('');
     const [editScheduledAt, setEditScheduledAt] = useState('');
+    const [editPlatforms, setEditPlatforms] = useState({});
+    const [activePlatformTab, setActivePlatformTab] = useState(null);
+    const [connectedAccounts, setConnectedAccounts] = useState([]);
     const [updating, setUpdating] = useState(false);
     const [canceling, setCanceling] = useState(false);
     const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -24,6 +29,8 @@ function ContentLibrary() {
     const [publishing, setPublishing] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [loadingPostDetails, setLoadingPostDetails] = useState(false);
+    const [postDetails, setPostDetails] = useState(null);
     const [confirmModal, setConfirmModal] = useState({
         isOpen: false,
         action: null,
@@ -53,7 +60,17 @@ function ContentLibrary() {
         }
 
         loadPosts();
+        loadConnectedAccounts();
     }, [navigate, statusFilter, platformFilter, offset]);
+
+    const loadConnectedAccounts = async () => {
+        try {
+            const accounts = await socialMediaAPI.getConnectedAccounts();
+            setConnectedAccounts(accounts);
+        } catch (err) {
+            console.error('Error loading connected accounts:', err);
+        }
+    };
 
     const loadPosts = async () => {
         try {
@@ -77,6 +94,24 @@ function ContentLibrary() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const loadPostDetails = async (postId) => {
+        try {
+            setLoadingPostDetails(true);
+            const details = await postAPI.getPostById(postId);
+            setPostDetails(details);
+        } catch (err) {
+            console.error('Error loading post details:', err);
+            showToast('Failed to load post details', 'error');
+        } finally {
+            setLoadingPostDetails(false);
+        }
+    };
+
+    const handleViewPost = async (post) => {
+        setSelectedPost(post);
+        await loadPostDetails(post.id);
     };
 
     const handleLogout = () => {
@@ -115,37 +150,88 @@ function ContentLibrary() {
         return statusMap[status] || 'status-default';
     };
 
-    const handleEditPost = (post) => {
-        setEditPost(post);
-        setEditContent(post.content);
-        setEditImageUrl(post.image_url || '');
-        setEditScheduledAt(post.scheduled_at ? new Date(post.scheduled_at).toISOString().slice(0, 16) : '');
+    const handleEditPost = async (post) => {
+        try {
+            console.log(post);
+            setEditPost(post);
+
+            // Load full post details to get all fields including tone, hashtag, and platform content
+            const details = await postAPI.getPostById(post.id);
+            setEditPostDetails(details);
+
+            // Set fields from detailed response
+            setEditTopic(details.topic || '');
+            setEditTone(details.tone || '');
+            setEditHashtag(details.hashtag || '');
+            setEditScheduledAt(details.scheduled_at ? new Date(details.scheduled_at).toISOString().slice(0, 16) : '');
+
+            // Initialize platform content
+            const platformContent = {};
+            if (details.platforms && details.platforms.length > 0) {
+                details.platforms.forEach(p => {
+                    platformContent[p.platform] = {
+                        content: p.content || '',
+                        image_url: p.image_url || '',
+                        social_account_id: p.social_account_id || null,
+                    };
+                });
+                setActivePlatformTab(details.platforms[0].platform);
+            }
+            setEditPlatforms(platformContent);
+        } catch (err) {
+            console.error('Error loading post details:', err);
+            showToast('Failed to load post details', 'error');
+        }
     };
 
     const handleUpdatePost = async () => {
         try {
-            if (!editContent.trim()) {
-                showToast('Content cannot be empty', 'error');
-                return;
-            }
-
             setUpdating(true);
             setError(null);
 
-            await postAPI.updatePost(editPost.id, {
-                content: editContent,
-                image_url: editImageUrl || undefined,
-                scheduled_at: editScheduledAt ? new Date(editScheduledAt).toISOString() : undefined,
-            });
+            // Update post metadata (only scheduled_at is editable)
+            if (editPost.status === 'scheduled' && editScheduledAt) {
+                await postAPI.updatePost(editPost.id, {
+                    scheduled_at: new Date(editScheduledAt).toISOString(),
+                });
+            }
+
+            // Update platforms if any platforms are selected
+            const selectedPlatforms = Object.keys(editPlatforms);
+            if (selectedPlatforms.length > 0) {
+                const platformsData = selectedPlatforms.map(platform => {
+                    const platformData = editPlatforms[platform];
+
+                    // Ensure we have a valid social_account_id
+                    let accountId = platformData.social_account_id;
+                    if (!accountId) {
+                        const account = connectedAccounts.find(acc => acc.platform.toLowerCase() === platform.toLowerCase());
+                        accountId = account?.id || null;
+                    }
+
+                    return {
+                        platform: platform.toLowerCase(),
+                        social_account_id: accountId,
+                        content: platformData.content || '',
+                        image_url: platformData.image_url || undefined,
+                    };
+                });
+
+                await postAPI.updatePlatforms(editPost.id, platformsData);
+            }
 
             // Refresh posts list
             await loadPosts();
 
             // Close edit modal
             setEditPost(null);
-            setEditContent('');
-            setEditImageUrl('');
+            setEditPostDetails(null);
+            setEditTopic('');
+            setEditTone('');
+            setEditHashtag('');
             setEditScheduledAt('');
+            setEditPlatforms({});
+            setActivePlatformTab(null);
 
             showToast('Post updated successfully', 'success');
 
@@ -354,7 +440,9 @@ function ContentLibrary() {
                                 <option value="">All</option>
                                 <option value="draft">Draft</option>
                                 <option value="scheduled">Scheduled</option>
-                                <option value="published">Published</option>
+                                <option value="completed">Completed</option>
+                                <option value="failed">Failed</option>
+                                <option value="in_progress">In Progress</option>
                             </select>
                         </div>
                         <div className="filter-group">
@@ -415,7 +503,7 @@ function ContentLibrary() {
                                     <thead>
                                         <tr>
                                             <th>ID</th>
-                                            <th className='content-cell'>Content</th>
+                                            <th className='content-cell'>Topic</th>
                                             <th>Status</th>
                                             <th>Platforms</th>
                                             <th>Completed</th>
@@ -429,8 +517,8 @@ function ContentLibrary() {
                                         {posts.map((post, index) => (
                                             <tr key={post.id} className="table-row">
                                                 <td className="post-id-cell">#{offset + index + 1}</td>
-                                                <td className="content-cell" onClick={() => setSelectedPost(post)} style={{ cursor: 'pointer' }}>
-                                                    {post.content.length > 40 ? post.content.substring(0, 40) + '...' : post.content}
+                                                <td className="content-cell" onClick={() => handleViewPost(post)} style={{ cursor: 'pointer' }}>
+                                                    {post.topic ? (post.topic.length > 40 ? post.topic.substring(0, 40) + '...' : post.topic) : '-'}
                                                 </td>
                                                 <td>
                                                     <span className={`status-badge ${getStatusBadgeClass(post.status)}`}>
@@ -540,11 +628,11 @@ function ContentLibrary() {
 
                     {/* Post Detail Modal */}
                     {selectedPost && (
-                        <div className="modal-overlay" onClick={() => setSelectedPost(null)}>
+                        <div className="modal-overlay" onClick={() => { setSelectedPost(null); setPostDetails(null); }}>
                             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                                 <div className="modal-header">
                                     <h2>Post Details</h2>
-                                    <button className="modal-close" onClick={() => setSelectedPost(null)}>
+                                    <button className="modal-close" onClick={() => { setSelectedPost(null); setPostDetails(null); }}>
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                         </svg>
@@ -552,66 +640,106 @@ function ContentLibrary() {
                                 </div>
 
                                 <div className="modal-body">
-                                    <div className="detail-section">
-                                        <div className="detail-row">
-                                            <span className="detail-label">Post ID:</span>
-                                            <span className="detail-value">#{selectedPost.id}</span>
+                                    {loadingPostDetails ? (
+                                        <div className="loading-container">
+                                            <div className="spinner-large"></div>
+                                            <p>Loading post details...</p>
                                         </div>
-                                        <div className="detail-row">
-                                            <span className="detail-label">Status:</span>
-                                            <span className={`status-badge ${getStatusBadgeClass(selectedPost.status)}`}>
-                                                {selectedPost.status}
-                                            </span>
-                                        </div>
-                                        <div className="detail-row">
-                                            <span className="detail-label">Created:</span>
-                                            <span className="detail-value">{new Date(selectedPost.created_at).toLocaleString()}</span>
-                                        </div>
-                                        {selectedPost.scheduled_at && (
-                                            <div className="detail-row">
-                                                <span className="detail-label">Scheduled:</span>
-                                                <span className="detail-value">{new Date(selectedPost.scheduled_at).toLocaleString()}</span>
+                                    ) : postDetails ? (
+                                        <>
+                                            <div className="detail-section">
+                                                <div className="detail-row">
+                                                    <span className="detail-label">Post ID:</span>
+                                                    <span className="detail-value">#{postDetails.id}</span>
+                                                </div>
+                                                <div className="detail-row">
+                                                    <span className="detail-label">Status:</span>
+                                                    <span className={`status-badge ${getStatusBadgeClass(postDetails.status)}`}>
+                                                        {postDetails.status}
+                                                    </span>
+                                                </div>
+                                                <div className="detail-row">
+                                                    <span className="detail-label">Created:</span>
+                                                    <span className="detail-value">{new Date(postDetails.created_at).toLocaleString()}</span>
+                                                </div>
+                                                {postDetails.scheduled_at && (
+                                                    <div className="detail-row">
+                                                        <span className="detail-label">Scheduled:</span>
+                                                        <span className="detail-value">{new Date(postDetails.scheduled_at).toLocaleString()}</span>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
 
-                                    <div className="detail-section">
-                                        <h3>Content</h3>
-                                        <div className="content-box">
-                                            {selectedPost.content}
-                                        </div>
-                                    </div>
-
-                                    {selectedPost.image_url && (
-                                        <div className="detail-section">
-                                            <h3>Image</h3>
-                                            <div className="modal-image">
-                                                <img src={selectedPost.image_url} alt="Post" />
+                                            <div className="detail-section">
+                                                <h3>Post Information</h3>
+                                                {postDetails.topic && (
+                                                    <div className="detail-row">
+                                                        <span className="detail-label">Topic:</span>
+                                                        <span className="detail-value">{postDetails.topic}</span>
+                                                    </div>
+                                                )}
+                                                {postDetails.tone && (
+                                                    <div className="detail-row">
+                                                        <span className="detail-label">Tone:</span>
+                                                        <span className="detail-value">{postDetails.tone}</span>
+                                                    </div>
+                                                )}
+                                                {postDetails.hashtag && (
+                                                    <div className="detail-row">
+                                                        <span className="detail-label">Hashtag:</span>
+                                                        <span className="detail-value">{postDetails.hashtag}</span>
+                                                    </div>
+                                                )}
                                             </div>
-                                        </div>
+
+                                            {postDetails.platforms && postDetails.platforms.length > 0 && (
+                                                <div className="detail-section">
+                                                    <h3>Platform Content</h3>
+                                                    {postDetails.platforms.map((platform, index) => (
+                                                        <div key={index} className="platform-detail">
+                                                            <div className="detail-row">
+                                                                <span className="detail-label">Platform:</span>
+                                                                <span className="detail-value">{platform.platform} ({platform.account_name})</span>
+                                                            </div>
+                                                            <div className="detail-row">
+                                                                <span className="detail-label">Status:</span>
+                                                                <span className={`status-badge ${getStatusBadgeClass(platform.status)}`}>
+                                                                    {platform.status}
+                                                                </span>
+                                                            </div>
+                                                            {platform.content && (
+                                                                <div className="content-box">
+                                                                    {platform.content}
+                                                                </div>
+                                                            )}
+                                                            {platform.image_url && (
+                                                                <div className="modal-image">
+                                                                    <img src={platform.image_url} alt={`${platform.platform} post`} />
+                                                                </div>
+                                                            )}
+                                                            {platform.platform_url && (
+                                                                <div className="detail-row">
+                                                                    <span className="detail-label">Post URL:</span>
+                                                                    <a href={platform.platform_url} target="_blank" rel="noopener noreferrer" className="detail-value">
+                                                                        View on {platform.platform}
+                                                                    </a>
+                                                                </div>
+                                                            )}
+                                                            {platform.error && (
+                                                                <div className="detail-row">
+                                                                    <span className="detail-label">Error:</span>
+                                                                    <span className="detail-value error-text">{platform.error}</span>
+                                                                </div>
+                                                            )}
+                                                            {index < postDetails.platforms.length - 1 && <br />}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <p>Failed to load post details</p>
                                     )}
-
-                                    <div className="detail-section">
-                                        <h3>Platform Statistics</h3>
-                                        <div className="stats-grid">
-                                            <div className="stat-card">
-                                                <span className="stat-label">Total Platforms</span>
-                                                <span className="stat-value">{selectedPost.platform_count}</span>
-                                            </div>
-                                            <div className="stat-card success">
-                                                <span className="stat-label">Completed</span>
-                                                <span className="stat-value">{selectedPost.completed_count}</span>
-                                            </div>
-                                            <div className="stat-card error">
-                                                <span className="stat-label">Failed</span>
-                                                <span className="stat-value">{selectedPost.failed_count}</span>
-                                            </div>
-                                            <div className="stat-card info">
-                                                <span className="stat-label">In Progress</span>
-                                                <span className="stat-value">{selectedPost.in_progress_count || 0}</span>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -632,27 +760,47 @@ function ContentLibrary() {
 
                                 <div className="modal-body">
                                     <div className="edit-form">
-                                        <div className="form-group">
-                                            <label className="edit-label">Content:</label>
-                                            <textarea
-                                                className="edit-textarea"
-                                                value={editContent}
-                                                onChange={(e) => setEditContent(e.target.value)}
-                                                rows={6}
-                                                placeholder="Enter post content..."
-                                            />
-                                        </div>
+                                        {/* Compact Post Information Table */}
+                                        {(editTopic || editTone || editHashtag) && (
+                                            <div className="form-group" style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+                                                <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Post Information</h3>
 
-                                        <div className="form-group">
-                                            <label className="edit-label">Image URL (optional):</label>
-                                            <input
-                                                type="text"
-                                                className="edit-input"
-                                                value={editImageUrl}
-                                                onChange={(e) => setEditImageUrl(e.target.value)}
-                                                placeholder="https://example.com/image.jpg"
-                                            />
-                                        </div>
+                                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                                    <tbody>
+                                                        {editTopic && (
+                                                            <tr>
+                                                                <td style={{ padding: '0.625rem 0.75rem', width: '120px', fontWeight: '600', fontSize: '0.875rem', color: '#475569', verticalAlign: 'top', borderBottom: '1px solid #e2e8f0' }}>
+                                                                    Content
+                                                                </td>
+                                                                <td style={{ padding: '0.625rem 0.75rem', fontSize: '0.875rem', color: '#1e293b', borderBottom: '1px solid #e2e8f0' }}>
+                                                                    {editTopic}
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                        {editTone && (
+                                                            <tr>
+                                                                <td style={{ padding: '0.625rem 0.75rem', width: '120px', fontWeight: '600', fontSize: '0.875rem', color: '#475569', verticalAlign: 'top', borderBottom: '1px solid #e2e8f0' }}>
+                                                                    Tone
+                                                                </td>
+                                                                <td style={{ padding: '0.625rem 0.75rem', fontSize: '0.875rem', color: '#1e293b', textTransform: 'capitalize', borderBottom: '1px solid #e2e8f0' }}>
+                                                                    {editTone}
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                        {editHashtag && (
+                                                            <tr>
+                                                                <td style={{ padding: '0.625rem 0.75rem', width: '120px', fontWeight: '600', fontSize: '0.875rem', color: '#475569', verticalAlign: 'top' }}>
+                                                                    Hashtags
+                                                                </td>
+                                                                <td style={{ padding: '0.625rem 0.75rem', fontSize: '0.875rem', color: '#3b82f6' }}>
+                                                                    {editHashtag}
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
 
                                         {editPost.status === 'scheduled' && (
                                             <div className="form-group">
@@ -666,6 +814,93 @@ function ContentLibrary() {
                                                 />
                                             </div>
                                         )}
+
+                                        {/* Platform Tabs - only for existing platforms */}
+                                        {Object.keys(editPlatforms).length > 0 && (
+                                            <div className="form-group">
+                                                <label className="edit-label">Platform Content:</label>
+                                                <div className="platform-tabs" style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                                    {Object.keys(editPlatforms).map(platform => {
+                                                        // Platform icons
+                                                        const platformIcons = {
+                                                            twitter: (
+                                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                                                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                                                </svg>
+                                                            ),
+                                                            linkedin: (
+                                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                                                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                                                                </svg>
+                                                            )
+                                                        };
+
+                                                        return (
+                                                            <button
+                                                                key={platform}
+                                                                type="button"
+                                                                className={`platform-tab ${activePlatformTab === platform ? 'active' : ''}`}
+                                                                onClick={() => setActivePlatformTab(platform)}
+                                                                style={{
+                                                                    padding: '0.625rem',
+                                                                    border: activePlatformTab === platform ? '2px solid #3b82f6' : '1px solid #d1d5db',
+                                                                    borderRadius: '6px',
+                                                                    background: activePlatformTab === platform ? '#eff6ff' : 'white',
+                                                                    color: activePlatformTab === platform ? '#1e40af' : '#6b7280',
+                                                                    cursor: 'pointer',
+                                                                    transition: 'all 0.2s',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    minWidth: '48px',
+                                                                    minHeight: '48px'
+                                                                }}
+                                                                title={platform.charAt(0).toUpperCase() + platform.slice(1)}
+                                                            >
+                                                                {platformIcons[platform]}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+
+                                                {activePlatformTab && editPlatforms[activePlatformTab] && (
+                                                    <div>
+                                                        <textarea
+                                                            className="edit-input"
+                                                            value={editPlatforms[activePlatformTab].content}
+                                                            onChange={(e) => {
+                                                                setEditPlatforms(prev => ({
+                                                                    ...prev,
+                                                                    [activePlatformTab]: {
+                                                                        ...prev[activePlatformTab],
+                                                                        content: e.target.value
+                                                                    }
+                                                                }));
+                                                            }}
+                                                            placeholder={`Enter content for ${activePlatformTab}...`}
+                                                            rows={6}
+                                                            style={{ marginBottom: '0.75rem' }}
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            className="edit-input"
+                                                            value={editPlatforms[activePlatformTab].image_url}
+                                                            onChange={(e) => {
+                                                                setEditPlatforms(prev => ({
+                                                                    ...prev,
+                                                                    [activePlatformTab]: {
+                                                                        ...prev[activePlatformTab],
+                                                                        image_url: e.target.value
+                                                                    }
+                                                                }));
+                                                            }}
+                                                            placeholder="Image URL (optional)"
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
 
                                         <div className="modal-actions">
                                             <button

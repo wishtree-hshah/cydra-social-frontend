@@ -8,13 +8,24 @@ function WorkspaceSetup() {
     const navigate = useNavigate();
 
     const [formData, setFormData] = useState({
-        businessName: '',
+        name: '',
+        type: '',
         industry: '',
-        defaultTone: '',
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+        description: '',
+        address: ''
     });
     const [errors, setErrors] = useState({});
     const [isLoading, setIsLoading] = useState(false);
+
+    const businessTypes = [
+        'Sole Proprietorship',
+        'Partnership',
+        'LLC',
+        'Corporation',
+        'Non-Profit',
+        'Other'
+    ];
 
     const industries = [
         'Technology',
@@ -26,17 +37,11 @@ function WorkspaceSetup() {
         'Real Estate',
         'Marketing & Advertising',
         'Consulting',
+        'Legal Services',
+        'HR Consulting',
+        'Employment Law',
         'E-commerce',
         'Other'
-    ];
-
-    const tones = [
-        'Professional',
-        'Casual',
-        'Friendly',
-        'Formal',
-        'Creative',
-        'Informative'
     ];
 
     const timezones = [
@@ -75,18 +80,18 @@ function WorkspaceSetup() {
     const validateForm = () => {
         const newErrors = {};
 
-        if (!formData.businessName.trim()) {
-            newErrors.businessName = 'Business name is required';
-        } else if (formData.businessName.trim().length < 2) {
-            newErrors.businessName = 'Business name must be at least 2 characters';
+        if (!formData.name.trim()) {
+            newErrors.name = 'Business name is required';
+        } else if (formData.name.trim().length < 2) {
+            newErrors.name = 'Business name must be at least 2 characters';
+        }
+
+        if (!formData.type) {
+            newErrors.type = 'Please select a business type';
         }
 
         if (!formData.industry) {
             newErrors.industry = 'Please select an industry';
-        }
-
-        if (!formData.defaultTone) {
-            newErrors.defaultTone = 'Please select a default tone';
         }
 
         if (!formData.timezone) {
@@ -109,10 +114,12 @@ function WorkspaceSetup() {
 
         try {
             const data = await workspaceAPI.createWorkspace({
-                businessName: formData.businessName,
+                name: formData.name,
+                type: formData.type,
                 industry: formData.industry,
-                defaultTone: formData.defaultTone,
                 timezone: formData.timezone,
+                description: formData.description,
+                address: formData.address,
             });
 
             console.log('Workspace created:', data);
@@ -166,8 +173,8 @@ function WorkspaceSetup() {
                     <div className="step-indicator">
                         <span className="step-badge">Step 1 of 1</span>
                     </div>
-                    <h1>Set Up Your Workspace</h1>
-                    <p>Let's personalize your experience</p>
+                    <h1>Business Information</h1>
+                    <p>Core details about your business</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="workspace-form">
@@ -178,90 +185,124 @@ function WorkspaceSetup() {
                     )}
 
                     <div className="form-group">
-                        <label htmlFor="businessName">
-                            Business Name <span className="required">*</span>
+                        <label htmlFor="name">
+                            Business Legal Name <span className="required">*</span>
                         </label>
                         <input
                             type="text"
-                            id="businessName"
-                            name="businessName"
-                            value={formData.businessName}
+                            id="name"
+                            name="name"
+                            value={formData.name}
                             onChange={handleChange}
-                            className={errors.businessName ? 'error' : ''}
-                            placeholder="Enter your business name"
+                            className={errors.name ? 'error' : ''}
+                            placeholder="Enter your business legal name"
                             autoFocus
                         />
-                        {errors.businessName && (
-                            <span className="error-message">{errors.businessName}</span>
+                        {errors.name && (
+                            <span className="error-message">{errors.name}</span>
                         )}
+                    </div>
+
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label htmlFor="type">
+                                Business Type <span className="required">*</span>
+                            </label>
+                            <select
+                                id="type"
+                                name="type"
+                                value={formData.type}
+                                onChange={handleChange}
+                                className={errors.type ? 'error' : ''}
+                            >
+                                <option value="">Select Type</option>
+                                {businessTypes.map(type => (
+                                    <option key={type} value={type}>
+                                        {type}
+                                    </option>
+                                ))}
+                            </select>
+                            {errors.type && (
+                                <span className="error-message">{errors.type}</span>
+                            )}
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="timezone">
+                                Business Timezone <span className="required">*</span>
+                            </label>
+                            <select
+                                id="timezone"
+                                name="timezone"
+                                value={formData.timezone}
+                                onChange={handleChange}
+                                className={errors.timezone ? 'error' : ''}
+                            >
+                                <option value="">Select timezone</option>
+                                {timezones.map(tz => (
+                                    <option key={tz} value={tz}>
+                                        {tz.replace(/_/g, ' ')}
+                                    </option>
+                                ))}
+                            </select>
+                            {errors.timezone && (
+                                <span className="error-message">{errors.timezone}</span>
+                            )}
+                        </div>
                     </div>
 
                     <div className="form-group">
                         <label htmlFor="industry">
-                            Industry/Persona <span className="required">*</span>
+                            Industry / Practice Area <span className="required">*</span>
                         </label>
-                        <select
+                        <input
+                            type="text"
                             id="industry"
                             name="industry"
                             value={formData.industry}
                             onChange={handleChange}
                             className={errors.industry ? 'error' : ''}
-                        >
-                            <option value="">Select your industry</option>
-                            {industries.map(industry => (
-                                <option key={industry} value={industry}>
-                                    {industry}
-                                </option>
-                            ))}
-                        </select>
+                            placeholder="e.g., Employment Law, HR Consulting, Real Estate"
+                        />
+                        <small className="field-hint">Separate multiple areas with commas</small>
                         {errors.industry && (
                             <span className="error-message">{errors.industry}</span>
                         )}
                     </div>
 
                     <div className="form-group">
-                        <label htmlFor="defaultTone">
-                            Default Tone <span className="required">*</span>
+                        <label htmlFor="description">
+                            Business Description
                         </label>
-                        <select
-                            id="defaultTone"
-                            name="defaultTone"
-                            value={formData.defaultTone}
+                        <textarea
+                            id="description"
+                            name="description"
+                            value={formData.description}
                             onChange={handleChange}
-                            className={errors.defaultTone ? 'error' : ''}
-                        >
-                            <option value="">Select default tone</option>
-                            {tones.map(tone => (
-                                <option key={tone} value={tone}>
-                                    {tone}
-                                </option>
-                            ))}
-                        </select>
-                        {errors.defaultTone && (
-                            <span className="error-message">{errors.defaultTone}</span>
+                            className={errors.description ? 'error' : ''}
+                            placeholder="e.g., Boutique employment law firm serving SMBs in Maryland"
+                            rows="3"
+                        />
+                        {errors.description && (
+                            <span className="error-message">{errors.description}</span>
                         )}
                     </div>
 
                     <div className="form-group">
-                        <label htmlFor="timezone">
-                            Timezone <span className="required">*</span>
+                        <label htmlFor="address">
+                            Business Address
                         </label>
-                        <select
-                            id="timezone"
-                            name="timezone"
-                            value={formData.timezone}
+                        <textarea
+                            id="address"
+                            name="address"
+                            value={formData.address}
                             onChange={handleChange}
-                            className={errors.timezone ? 'error' : ''}
-                        >
-                            <option value="">Select timezone</option>
-                            {timezones.map(tz => (
-                                <option key={tz} value={tz}>
-                                    {tz.replace(/_/g, ' ')}
-                                </option>
-                            ))}
-                        </select>
-                        {errors.timezone && (
-                            <span className="error-message">{errors.timezone}</span>
+                            className={errors.address ? 'error' : ''}
+                            placeholder="123 Main Street, Suite 100&#10;Baltimore, MD 21201"
+                            rows="2"
+                        />
+                        {errors.address && (
+                            <span className="error-message">{errors.address}</span>
                         )}
                     </div>
 

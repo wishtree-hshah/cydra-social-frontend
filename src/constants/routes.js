@@ -17,5 +17,6 @@ export const ROUTES = {
     CREATE_POST: '/create-post',
     CONTENT_LIBRARY: '/content-library',
     SOCIAL_SETTINGS: '/social-settings',
+    WORKSPACE_SETTINGS: '/workspace-settings',
     HOME: '/',
 };

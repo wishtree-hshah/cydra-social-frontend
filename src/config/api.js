@@ -97,10 +97,24 @@ export const workspaceAPI = {
 
     createWorkspace: async (workspaceData) => {
         const response = await apiClient.post(ENDPOINTS.WORKSPACE.CREATE, {
-            business_name: workspaceData.businessName,
-            industry: workspaceData.industry,
-            default_tone: workspaceData.defaultTone,
+            name: workspaceData.name,
+            type: workspaceData.type,
             timezone: workspaceData.timezone,
+            industry: workspaceData.industry,
+            description: workspaceData.description,
+            address: workspaceData.address,
+        });
+        return response.data;
+    },
+
+    updateWorkspace: async (workspaceData) => {
+        const response = await apiClient.put(ENDPOINTS.WORKSPACE.GET, {
+            name: workspaceData.name,
+            type: workspaceData.type,
+            timezone: workspaceData.timezone,
+            industry: workspaceData.industry,
+            description: workspaceData.description,
+            address: workspaceData.address,
         });
         return response.data;
     },

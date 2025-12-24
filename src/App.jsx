@@ -7,6 +7,7 @@ import CreatePost from './pages/CreatePost';
 import ContentLibrary from './pages/ContentLibrary';
 import SocialSettings from './pages/SocialSettings';
 import WorkspaceSetup from './pages/WorkspaceSetup';
+import WorkspaceSettings from './pages/WorkspaceSettings';
 import WorkspaceCheck from './components/WorkspaceCheck';
 import OAuthCallback from './pages/OAuthCallback';
 
@@ -28,6 +29,7 @@ function App() {
           <Route path="/create-post" element={<CreatePost />} />
           <Route path="/content-library" element={<ContentLibrary />} />
           <Route path="/social-settings" element={<SocialSettings />} />
+          <Route path="/workspace-settings" element={<WorkspaceSettings />} />
           <Route path="/oauth/callback" element={<OAuthCallback />} />
           <Route path="/oauth/success" element={<OAuthCallback />} />
 

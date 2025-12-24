@@ -13,7 +13,7 @@
 
 .workspace-card {
     width: 100%;
-    max-width: 520px;
+    max-width: 650px;
     background: #ffffff;
     border-radius: 16px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05),
@@ -140,6 +140,68 @@
 .workspace-form .form-group select.error:focus {
     box-shadow: 0 0 0 3px rgba(252, 129, 129, 0.1);
 }
+
+/* Form Row - Two Columns */
+.workspace-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 640px) {
+    .workspace-form .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Textarea */
+.workspace-form .form-group textarea {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 15px;
+    color: #2d3748;
+    background: #f7fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    outline: none;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    box-sizing: border-box;
+    resize: vertical;
+    min-height: 80px;
+}
+
+.workspace-form .form-group textarea::placeholder {
+    color: #a0aec0;
+}
+
+.workspace-form .form-group textarea:focus {
+    background: #ffffff;
+    border-color: #4299e1;
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+.workspace-form .form-group textarea:hover:not(:focus) {
+    border-color: #cbd5e0;
+}
+
+.workspace-form .form-group textarea.error {
+    border-color: #fc8181;
+    background: #fff5f5;
+}
+
+.workspace-form .form-group textarea.error:focus {
+    box-shadow: 0 0 0 3px rgba(252, 129, 129, 0.1);
+}
+
+/* Field Hint */
+.workspace-form .form-group .field-hint {
+    font-size: 12px;
+    color: #718096;
+    margin-top: -4px;
+    display: block;
+}
+
 
 /* Error Messages */
 .workspace-form .error-message {

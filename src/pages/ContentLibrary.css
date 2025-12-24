@@ -489,11 +489,58 @@
     stroke-width: 2;
 }
 
-/* Edit Button */
+/* Action Buttons */
 .action-buttons {
     display: flex;
     gap: 0.5rem;
-    flex-wrap: wrap;
+}
+
+/* Icon Action Buttons */
+.btn-icon-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* width: 36px;
+    height: 36px; */
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #3b82f6;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-icon-action svg {
+    width: 16px;
+    height: 16px;
+}
+
+.btn-icon-action:hover:not(:disabled) {
+    background: rgba(59, 130, 246, 0.1);
+    transform: scale(1.1);
+}
+
+.btn-icon-action.btn-icon-delete {
+    color: #ef4444;
+}
+
+.btn-icon-action.btn-icon-delete:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.btn-icon-action.btn-icon-schedule {
+    color: #f59e0b;
+}
+
+.btn-icon-action.btn-icon-schedule:hover:not(:disabled) {
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.btn-icon-action:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none !important;
 }
 
 .btn-edit-small,

@@ -6,6 +6,43 @@
     margin: 0 auto;
 }
 
+/* Refresh Button */
+.btn-refresh {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background: transparent;
+    border: 2px solid var(--color-border-medium);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: auto;
+}
+
+.btn-refresh svg {
+    width: 20px;
+    height: 20px;
+    color: var(--color-text-secondary);
+    transition: all 0.2s ease;
+}
+
+.btn-refresh:hover {
+    background: var(--color-bg-secondary);
+    border-color: var(--color-primary);
+}
+
+.btn-refresh:hover svg {
+    color: var(--color-primary);
+    transform: rotate(180deg);
+}
+
+.btn-refresh:active svg {
+    transform: rotate(360deg);
+}
+
 /* Filters Bar */
 .filters-bar {
     display: flex;

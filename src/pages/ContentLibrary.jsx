@@ -319,7 +319,7 @@ function ContentLibrary() {
                 <header className="dashboard-header">
                     <div className="header-left">
                         <h1>Content Library</h1>
-                        <p className="header-subtitle">Your post history and analytics</p>
+                        <p className="header-subtitle">Manage and track your social media posts</p>
                     </div>
                     <div className="header-right">
                         <button onClick={handleLogout} className="btn-logout">
@@ -330,29 +330,46 @@ function ContentLibrary() {
 
                 {/* Content Library */}
                 <div className="content-library-page">
-                    {/* Filters */}
+                    {/* Filters Bar */}
                     <div className="filters-bar">
                         <div className="filter-group">
-                            <label>Status:</label>
-                            <select value={statusFilter} onChange={(e) => handleFilterChange('status', e.target.value)}>
+                            <label htmlFor="status-filter">Status:</label>
+                            <select
+                                id="status-filter"
+                                value={statusFilter}
+                                onChange={(e) => {
+                                    setStatusFilter(e.target.value);
+                                    setOffset(0);
+                                }}
+                            >
                                 <option value="">All</option>
-                                <option value="scheduled">Scheduled</option>
-                                <option value="completed">Completed</option>
-                                <option value="failed">Failed</option>
-                                <option value="publishing">Publishing</option>
                                 <option value="draft">Draft</option>
+                                <option value="scheduled">Scheduled</option>
+                                <option value="published">Published</option>
                             </select>
                         </div>
                         <div className="filter-group">
-                            <label>Platform:</label>
-                            <select value={platformFilter} onChange={(e) => handleFilterChange('platform', e.target.value)}>
+                            <label htmlFor="platform-filter">Platform:</label>
+                            <select
+                                id="platform-filter"
+                                value={platformFilter}
+                                onChange={(e) => {
+                                    setPlatformFilter(e.target.value);
+                                    setOffset(0);
+                                }}
+                            >
                                 <option value="">All</option>
-                                {/* <option value="facebook">Facebook</option> */}
-                                {/* <option value="instagram">Instagram</option> */}
-                                <option value="twitter">X</option>
+                                {/* <option value="facebook">Facebook</option>
+                                <option value="instagram">Instagram</option> */}
+                                <option value="x">X</option>
                                 <option value="linkedin">LinkedIn</option>
                             </select>
                         </div>
+                        <button onClick={loadPosts} className="btn-refresh" title="Refresh">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
                     </div>
 
                     {/* Error Message */}

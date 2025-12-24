@@ -163,8 +163,9 @@ export const postAPI = {
     // Publish to multiple platforms
     publishPost: async (data) => {
         const response = await apiClient.post(ENDPOINTS.POST.PUBLISH_MULTI, {
-            content: data.content,
-            image_url: data.image_url,
+            topic: data.topic,
+            tone: data.tone,
+            hashtag: data.hashtag,
             platforms: data.platforms,
             status: data.status || 'immediate',
             scheduled_at: data.scheduled_at,
@@ -184,13 +185,29 @@ export const postAPI = {
         return response.data;
     },
 
+    // Get detailed post information by ID (includes all platform statuses)
+    getPostById: async (postId) => {
+        const response = await apiClient.get(ENDPOINTS.POST.GET_POST_BY_ID(postId));
+        return response.data;
+    },
+
     // Update a post (drafts and scheduled posts only)
     updatePost: async (postId, data) => {
-        const response = await apiClient.patch(ENDPOINTS.POST.UPDATE_POST(postId), {
-            content: data.content,
-            image_url: data.image_url,
-            scheduled_at: data.scheduled_at,
-        });
+        const payload = {};
+
+        // Only include fields that are provided
+        if (data.topic !== undefined) payload.topic = data.topic;
+        if (data.tone !== undefined) payload.tone = data.tone;
+        if (data.hashtag !== undefined) payload.hashtag = data.hashtag;
+        if (data.scheduled_at !== undefined) payload.scheduled_at = data.scheduled_at;
+
+        const response = await apiClient.patch(ENDPOINTS.POST.UPDATE_POST(postId), payload);
+        return response.data;
+    },
+
+    // Update platforms for a post (drafts and scheduled posts only)
+    updatePlatforms: async (postId, platforms) => {
+        const response = await apiClient.put(ENDPOINTS.POST.UPDATE_PLATFORMS(postId), platforms);
         return response.data;
     },
 

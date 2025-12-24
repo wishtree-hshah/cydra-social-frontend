@@ -84,13 +84,21 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s ease;
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.platform-icon svg {
+    width: 32px;
+    height: 32px;
 }
 
 .platform-card:hover .platform-icon {
     transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: #ffffff;
 }
 
 .platform-info h3 {
@@ -302,7 +310,11 @@
     .platform-icon {
         width: 48px;
         height: 48px;
-        font-size: 24px;
+    }
+
+    .platform-icon svg {
+        width: 28px;
+        height: 28px;
     }
 
     .platform-info h3 {

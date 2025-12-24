@@ -387,7 +387,7 @@ function CreatePost() {
                                         checked={selectedPlatforms.includes('twitter')}
                                         onChange={() => togglePlatform('twitter')}
                                     />
-                                    <span>Twitter</span>
+                                    <span>X</span>
                                 </label>
                                 <label className="checkbox-item">
                                     <input

@@ -349,7 +349,7 @@ function ContentLibrary() {
                                 <option value="">All</option>
                                 <option value="facebook">Facebook</option>
                                 <option value="instagram">Instagram</option>
-                                <option value="twitter">Twitter</option>
+                                <option value="twitter">X</option>
                                 <option value="linkedin">LinkedIn</option>
                             </select>
                         </div>

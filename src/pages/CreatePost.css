@@ -21,6 +21,73 @@
     margin: 0 0 12px 0;
 }
 
+.section-label .required {
+    color: #ef4444;
+    margin-left: 2px;
+}
+
+/* Tooltip Styles */
+.label-with-tooltip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    /* margin-bottom: 12px; */
+}
+
+.tooltip-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: help;
+}
+
+.info-icon {
+    width: 16px;
+    height: 16px;
+    color: #64748b;
+    transition: color 0.2s ease;
+    margin: 0 0 12px 0;
+}
+
+.tooltip-container:hover .info-icon {
+    color: var(--color-primary);
+}
+
+.tooltip-text {
+    position: absolute;
+    top: 50%;
+    left: calc(100% + 10px);
+    transform: translateY(-70%);
+    padding: 8px 12px;
+    background: #1e293b;
+    color: white;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.tooltip-text::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 100%;
+    transform: translateY(-50%);
+    border: 5px solid transparent;
+    border-right-color: #1e293b;
+}
+
+.tooltip-container:hover .tooltip-text {
+    opacity: 1;
+    visibility: visible;
+}
+
 /* Platform Checkboxes */
 .platform-checkboxes {
     display: flex;

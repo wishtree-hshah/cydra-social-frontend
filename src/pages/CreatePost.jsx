@@ -363,7 +363,7 @@ function CreatePost() {
                     <div className="create-post-form">
                         {/* Platform Selection */}
                         <section className="form-section">
-                            <h3 className="section-label">Platform</h3>
+                            <h3 className="section-label">Platform <span className="required">*</span></h3>
                             <div className="platform-checkboxes">
                                 {/* <label className="checkbox-item">
                                     <input
@@ -402,10 +402,19 @@ function CreatePost() {
 
                         {/* Content Section */}
                         <section className="form-section">
-                            <h3 className="section-label">Content</h3>
+                            <div className="label-with-tooltip">
+                                <h3 className="section-label">Content <span className="required">*</span></h3>
+                                <div className="tooltip-container">
+                                    <svg className="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                                        <path d="M12 16v-4M12 8h.01" strokeLinecap="round" strokeWidth="2" />
+                                    </svg>
+                                    <span className="tooltip-text">Brief description or main topic of your post</span>
+                                </div>
+                            </div>
                             <textarea
                                 className="textarea-field"
-                                placeholder="Post Topic/Brief"
+                                placeholder="Example: Launch announcement for our new eco-friendly product line"
                                 value={postTopic}
                                 onChange={(e) => setPostTopic(e.target.value)}
                                 rows={5}
@@ -414,7 +423,16 @@ function CreatePost() {
 
                         {/* Tone Selection */}
                         <section className="form-section">
-                            <h3 className="section-label">Tone</h3>
+                            <div className="label-with-tooltip">
+                                <h3 className="section-label">Tone <span className="required">*</span></h3>
+                                <div className="tooltip-container">
+                                    <svg className="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                                        <path d="M12 16v-4M12 8h.01" strokeLinecap="round" strokeWidth="2" />
+                                    </svg>
+                                    <span className="tooltip-text">Select the writing style for your post content</span>
+                                </div>
+                            </div>
                             <select
                                 className="select-field"
                                 value={tone}

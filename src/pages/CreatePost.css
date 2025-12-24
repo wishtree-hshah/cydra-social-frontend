@@ -24,8 +24,8 @@
 /* Platform Checkboxes */
 .platform-checkboxes {
     display: flex;
-    flex-direction: column;
-    gap: 12px;
+    flex-direction: row;
+    gap: 20px;
 }
 
 .checkbox-item {

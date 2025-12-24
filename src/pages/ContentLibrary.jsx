@@ -347,8 +347,8 @@ function ContentLibrary() {
                             <label>Platform:</label>
                             <select value={platformFilter} onChange={(e) => handleFilterChange('platform', e.target.value)}>
                                 <option value="">All</option>
-                                <option value="facebook">Facebook</option>
-                                <option value="instagram">Instagram</option>
+                                {/* <option value="facebook">Facebook</option> */}
+                                {/* <option value="instagram">Instagram</option> */}
                                 <option value="twitter">X</option>
                                 <option value="linkedin">LinkedIn</option>
                             </select>

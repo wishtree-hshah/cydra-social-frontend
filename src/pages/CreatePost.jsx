@@ -365,22 +365,22 @@ function CreatePost() {
                         <section className="form-section">
                             <h3 className="section-label">Platform</h3>
                             <div className="platform-checkboxes">
-                                <label className="checkbox-item">
+                                {/* <label className="checkbox-item">
                                     <input
                                         type="checkbox"
                                         checked={selectedPlatforms.includes('facebook')}
                                         onChange={() => togglePlatform('facebook')}
                                     />
                                     <span>Facebook</span>
-                                </label>
-                                <label className="checkbox-item">
+                                </label> */}
+                                {/* <label className="checkbox-item">
                                     <input
                                         type="checkbox"
                                         checked={selectedPlatforms.includes('instagram')}
                                         onChange={() => togglePlatform('instagram')}
                                     />
                                     <span>Instagram</span>
-                                </label>
+                                </label> */}
                                 <label className="checkbox-item">
                                     <input
                                         type="checkbox"
@@ -511,8 +511,8 @@ function CreatePost() {
                                 <div className="platform-tabs">
                                     {Object.keys(generatedContentByPlatform).map(platform => {
                                         const platformIcons = {
-                                            facebook: '📘',
-                                            instagram: '📷',
+                                            // facebook: '📘',
+                                            // instagram: '📷',
                                             twitter: '🐦',
                                             linkedin: '💼'
                                         };

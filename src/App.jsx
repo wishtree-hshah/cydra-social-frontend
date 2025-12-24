@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import { ToastProvider } from './context/ToastContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -12,31 +12,7 @@ import OAuthCallback from './pages/OAuthCallback';
 
 function App() {
   return (
-    <>
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-          success: {
-            duration: 3000,
-            iconTheme: {
-              primary: '#4ade80',
-              secondary: '#fff',
-            },
-          },
-          error: {
-            duration: 4000,
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fff',
-            },
-          },
-        }}
-      />
+    <ToastProvider>
       <Router>
         <Routes>
           {/* Public routes */}
@@ -59,7 +35,7 @@ function App() {
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>
-    </>
+    </ToastProvider>
   );
 }
 

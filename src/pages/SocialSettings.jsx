@@ -2,15 +2,21 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../constants/routes';
 import { socialMediaAPI } from '../config/api';
+import { useToast } from '../context/ToastContext';
+import ConfirmationModal from '../components/ConfirmationModal';
 import './SocialSettings.css';
-// 
 function SocialSettings() {
     const navigate = useNavigate();
+    const { showToast } = useToast();
     const [user, setUser] = useState(null);
     const [connectedAccounts, setConnectedAccounts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(null);
     const [error, setError] = useState(null);
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        platform: null
+    });
 
     const platforms = [
         { id: 'facebook', name: 'Facebook', icon: '📘', color: '#1877F2' },
@@ -93,10 +99,23 @@ function SocialSettings() {
         }
     };
 
-    const handleDisconnect = async (platform) => {
-        if (!window.confirm(`Are you sure you want to disconnect ${platform}?`)) {
-            return;
-        }
+    const openDisconnectModal = (platform) => {
+        setConfirmModal({
+            isOpen: true,
+            platform
+        });
+    };
+
+    const closeDisconnectModal = () => {
+        setConfirmModal({
+            isOpen: false,
+            platform: null
+        });
+    };
+
+    const handleDisconnect = async () => {
+        const platform = confirmModal.platform;
+        closeDisconnectModal();
 
         try {
             setActionLoading(platform);
@@ -107,9 +126,13 @@ function SocialSettings() {
             // Reload connected accounts
             await loadConnectedAccounts();
             setActionLoading(null);
+
+            showToast(`${platform.charAt(0).toUpperCase() + platform.slice(1)} disconnected successfully`, 'success');
         } catch (err) {
             console.error(`Error disconnecting ${platform}:`, err);
-            setError(`Failed to disconnect ${platform}. Please try again.`);
+            const errorMessage = err.response?.data?.detail || `Failed to disconnect ${platform}. Please try again.`;
+            setError(errorMessage);
+            showToast(errorMessage, 'error');
             setActionLoading(null);
         }
     };
@@ -238,7 +261,7 @@ function SocialSettings() {
                                         {isConnected ? (
                                             <button
                                                 className="btn-disconnect"
-                                                onClick={() => handleDisconnect(platform.id)}
+                                                onClick={() => openDisconnectModal(platform.id)}
                                                 disabled={isActionInProgress}
                                             >
                                                 {isActionInProgress ? (
@@ -285,6 +308,18 @@ function SocialSettings() {
                         </div>
                     )}
                 </div>
+
+                {/* Disconnect Confirmation Modal */}
+                <ConfirmationModal
+                    isOpen={confirmModal.isOpen}
+                    title="Disconnect Platform"
+                    message={`Are you sure you want to disconnect ${confirmModal.platform ? confirmModal.platform.charAt(0).toUpperCase() + confirmModal.platform.slice(1) : ''}? You can reconnect anytime.`}
+                    confirmText="Disconnect"
+                    cancelText="Cancel"
+                    variant="danger"
+                    onConfirm={handleDisconnect}
+                    onCancel={closeDisconnectModal}
+                />
             </div>
         </div>
     );

@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../constants/routes';
 import { postAPI } from '../config/api';
+import { useToast } from '../context/ToastContext';
+import ConfirmationModal from '../components/ConfirmationModal';
 import './ContentLibrary.css';
 
 function ContentLibrary() {
     const navigate = useNavigate();
+    const { showToast } = useToast();
     const [user, setUser] = useState(null);
     const [posts, setPosts] = useState([]);
     const [selectedPost, setSelectedPost] = useState(null);
@@ -21,6 +24,12 @@ function ContentLibrary() {
     const [publishing, setPublishing] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        action: null,
+        post: null,
+        message: ''
+    });
 
     // Filters
     const [statusFilter, setStatusFilter] = useState('');
@@ -116,7 +125,7 @@ function ContentLibrary() {
     const handleUpdatePost = async () => {
         try {
             if (!editContent.trim()) {
-                setError('Content cannot be empty');
+                showToast('Content cannot be empty', 'error');
                 return;
             }
 
@@ -138,23 +147,35 @@ function ContentLibrary() {
             setEditImageUrl('');
             setEditScheduledAt('');
 
+            showToast('Post updated successfully', 'success');
+
         } catch (err) {
             console.error('Error updating post:', err);
-            setError(err.response?.data?.detail || 'Failed to update post. Please try again.');
+            const errorMessage = err.response?.data?.detail || 'Failed to update post. Please try again.';
+            showToast(errorMessage, 'error');
         } finally {
             setUpdating(false);
         }
     };
 
-    const handleCancelPost = async (post) => {
+    const openCancelModal = (post) => {
         const action = post.status === 'scheduled' ? 'convert to draft' : 'delete';
-        const confirmMessage = post.status === 'scheduled'
-            ? `Are you sure you want to cancel this scheduled post and convert it to a draft?`
-            : `Are you sure you want to delete this draft post? This action cannot be undone.`;
+        const message = post.status === 'scheduled'
+            ? 'Are you sure you want to cancel this scheduled post and convert it to a draft?'
+            : 'Are you sure you want to delete this draft post? This action cannot be undone.';
 
-        if (!window.confirm(confirmMessage)) {
-            return;
-        }
+        setConfirmModal({
+            isOpen: true,
+            action: 'cancel',
+            post,
+            message
+        });
+    };
+
+    const handleCancelPost = async () => {
+        const post = confirmModal.post;
+        const action = post.status === 'scheduled' ? 'convert to draft' : 'delete';
+        setConfirmModal({ isOpen: false, action: null, post: null, message: '' });
 
         try {
             setCanceling(true);
@@ -163,8 +184,10 @@ function ContentLibrary() {
             // Use deletePost for drafts, cancelPost for scheduled
             if (post.status === 'draft') {
                 await postAPI.deletePost(post.id);
+                showToast('Draft deleted successfully', 'success');
             } else {
                 await postAPI.cancelPost(post.id);
+                showToast('Scheduled post converted to draft', 'success');
             }
 
             // Refresh posts list
@@ -172,7 +195,8 @@ function ContentLibrary() {
 
         } catch (err) {
             console.error(`Error ${action === 'delete' ? 'deleting' : 'canceling'} post:`, err);
-            setError(err.response?.data?.detail || `Failed to ${action} post. Please try again.`);
+            const errorMessage = err.response?.data?.detail || `Failed to ${action} post. Please try again.`;
+            showToast(errorMessage, 'error');
         } finally {
             setCanceling(false);
         }
@@ -186,7 +210,7 @@ function ContentLibrary() {
     const handleConfirmSchedule = async () => {
         try {
             if (!scheduleDateTime) {
-                setError('Please select a date and time for scheduling');
+                showToast('Please select a date and time for scheduling', 'error');
                 return;
             }
 
@@ -207,18 +231,29 @@ function ContentLibrary() {
             setSchedulingPost(null);
             setScheduleDateTime('');
 
+            showToast('Post scheduled successfully', 'success');
+
         } catch (err) {
             console.error('Error scheduling post:', err);
-            setError(err.response?.data?.detail || 'Failed to schedule post. Please try again.');
+            const errorMessage = err.response?.data?.detail || 'Failed to schedule post. Please try again.';
+            showToast(errorMessage, 'error');
         } finally {
             setPublishing(false);
         }
     };
 
-    const handlePublishDraft = async (post) => {
-        if (!window.confirm('Are you sure you want to publish this draft immediately?')) {
-            return;
-        }
+    const openPublishModal = (post) => {
+        setConfirmModal({
+            isOpen: true,
+            action: 'publish',
+            post,
+            message: 'Are you sure you want to publish this draft immediately? It will be posted to all selected platforms.'
+        });
+    };
+
+    const handlePublishDraft = async () => {
+        const post = confirmModal.post;
+        setConfirmModal({ isOpen: false, action: null, post: null, message: '' });
 
         try {
             setPublishing(true);
@@ -230,9 +265,12 @@ function ContentLibrary() {
             // Refresh posts list
             await loadPosts();
 
+            showToast('Post published successfully', 'success');
+
         } catch (err) {
             console.error('Error publishing post:', err);
-            setError(err.response?.data?.detail || 'Failed to publish post. Please try again.');
+            const errorMessage = err.response?.data?.detail || 'Failed to publish post. Please try again.';
+            showToast(errorMessage, 'error');
         } finally {
             setPublishing(false);
         }
@@ -412,7 +450,7 @@ function ContentLibrary() {
                                                                 className="btn-delete-small"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    handleCancelPost(post);
+                                                                    openCancelModal(post);
                                                                 }}
                                                                 disabled={canceling || publishing}
                                                             >
@@ -425,7 +463,7 @@ function ContentLibrary() {
                                                             className="btn-cancel-small"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                handleCancelPost(post);
+                                                                openCancelModal(post);
                                                             }}
                                                             disabled={canceling}
                                                         >
@@ -643,7 +681,7 @@ function ContentLibrary() {
                                             className="btn-publish-now"
                                             onClick={() => {
                                                 setShowScheduleModal(false);
-                                                handlePublishDraft(schedulingPost);
+                                                openPublishModal(schedulingPost);
                                             }}
                                         >
                                             Publish Now
@@ -656,6 +694,30 @@ function ContentLibrary() {
                             </div>
                         </div>
                     )}
+
+                    {/* Cancel/Delete Confirmation Modal */}
+                    <ConfirmationModal
+                        isOpen={confirmModal.isOpen && confirmModal.action === 'cancel'}
+                        title={confirmModal.post?.status === 'scheduled' ? 'Cancel Scheduled Post' : 'Delete Draft'}
+                        message={confirmModal.message}
+                        confirmText={confirmModal.post?.status === 'scheduled' ? 'Convert to Draft' : 'Delete'}
+                        cancelText="Cancel"
+                        variant="danger"
+                        onConfirm={handleCancelPost}
+                        onCancel={() => setConfirmModal({ isOpen: false, action: null, post: null, message: '' })}
+                    />
+
+                    {/* Publish Confirmation Modal */}
+                    <ConfirmationModal
+                        isOpen={confirmModal.isOpen && confirmModal.action === 'publish'}
+                        title="Publish Post Now"
+                        message={confirmModal.message}
+                        confirmText="Publish Now"
+                        cancelText="Cancel"
+                        variant="info"
+                        onConfirm={handlePublishDraft}
+                        onCancel={() => setConfirmModal({ isOpen: false, action: null, post: null, message: '' })}
+                    />
                 </div>
             </div>
         </div>

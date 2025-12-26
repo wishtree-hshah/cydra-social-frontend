@@ -13,8 +13,9 @@ function CreatePost() {
     const [postTopic, setPostTopic] = useState('');
     const [tone, setTone] = useState('');
     const [keywords, setKeywords] = useState('');
-    const [generatedContentByPlatform, setGeneratedContentByPlatform] = useState({});
-    const [activePlatformTab, setActivePlatformTab] = useState(null);
+    const [generatedContentByAgent, setGeneratedContentByAgent] = useState({});
+    const [activeAgentTab, setActiveAgentTab] = useState(null);
+    const [slideDirection, setSlideDirection] = useState('right');
     const [generatedImage, setGeneratedImage] = useState(null);
     const [loading, setLoading] = useState(false);
     const [publishing, setPublishing] = useState(false);
@@ -96,18 +97,54 @@ function CreatePost() {
                 platforms: selectedPlatforms,
             });
 
-            // Store generated content by platform
+            // Transform response to agent-centric structure
             if (response.success && response.generated) {
-                const contentByPlatform = {};
-                Object.entries(response.generated).forEach(([platform, data]) => {
-                    contentByPlatform[platform] = data.content;
-                });
-                setGeneratedContentByPlatform(contentByPlatform);
+                const contentByAgent = {};
 
-                // Set first platform as active tab
-                const firstPlatform = Object.keys(contentByPlatform)[0];
-                if (firstPlatform) {
-                    setActivePlatformTab(firstPlatform);
+                // Get all platforms from response
+                const platforms = Object.keys(response.generated);
+
+                // Get agents from first platform (all platforms have same agents)
+                const firstPlatform = platforms[0];
+                if (firstPlatform && response.generated[firstPlatform].agent_outputs) {
+                    const agents = response.generated[firstPlatform].agent_outputs;
+
+                    // Reorganize by agent
+                    agents.forEach(agentOutput => {
+                        const agentName = agentOutput.agent_name;
+
+                        if (!contentByAgent[agentName]) {
+                            contentByAgent[agentName] = {
+                                agent_id: agentOutput.agent_id,
+                                agent_designation: agentOutput.agent_designation,
+                                agent_description: agentOutput.agent_description,
+                                platforms: {}
+                            };
+                        }
+
+                        // Add content for each platform from this agent
+                        platforms.forEach(platform => {
+                            const platformData = response.generated[platform];
+                            const agentData = platformData.agent_outputs.find(
+                                a => a.agent_id === agentOutput.agent_id
+                            );
+
+                            if (agentData) {
+                                contentByAgent[agentName].platforms[platform] = {
+                                    text: agentData.text,
+                                    token_usage: agentData.token_usage
+                                };
+                            }
+                        });
+                    });
+                }
+
+                setGeneratedContentByAgent(contentByAgent);
+
+                // Set first agent as active tab
+                const firstAgent = Object.keys(contentByAgent)[0];
+                if (firstAgent) {
+                    setActiveAgentTab(firstAgent);
                 }
             }
         } catch (err) {
@@ -120,8 +157,8 @@ function CreatePost() {
 
     const handleRegenerate = () => {
         // Clear current content and regenerate
-        setGeneratedContentByPlatform({});
-        setActivePlatformTab(null);
+        setGeneratedContentByAgent({});
+        setActiveAgentTab(null);
         handleGenerateContent();
     };
 
@@ -130,9 +167,16 @@ function CreatePost() {
         console.log('Generate image clicked');
     };
 
-    // Shared function to prepare platform data
+    // Shared function to prepare platform data from current agent's content
     const preparePlatformData = () => {
-        return Object.entries(generatedContentByPlatform).map(([platform, content]) => {
+        if (!activeAgentTab || !generatedContentByAgent[activeAgentTab]) {
+            throw new Error('No agent content selected');
+        }
+
+        const agentData = generatedContentByAgent[activeAgentTab];
+        const platforms = agentData.platforms;
+
+        return Object.entries(platforms).map(([platform, data]) => {
             const account = connectedAccounts.find(acc => acc.platform.toLowerCase() === platform.toLowerCase());
 
             if (!account) {
@@ -142,7 +186,7 @@ function CreatePost() {
             return {
                 platform: platform.toLowerCase(),
                 social_account_id: account.id,
-                content: content,
+                content: data.text,
                 image_url: generatedImage || undefined,
             };
         });
@@ -151,7 +195,7 @@ function CreatePost() {
     const handleSaveAsDraft = async () => {
         try {
             // Validation
-            if (Object.keys(generatedContentByPlatform).length === 0) {
+            if (Object.keys(generatedContentByAgent).length === 0) {
                 setError('Please generate content before saving as draft');
                 return;
             }
@@ -176,8 +220,8 @@ function CreatePost() {
 
             // Clear form after successful save
             setTimeout(() => {
-                setGeneratedContentByPlatform({});
-                setActivePlatformTab(null);
+                setGeneratedContentByAgent({});
+                setActiveAgentTab(null);
                 setPostTopic('');
                 setKeywords('');
                 setSelectedPlatforms([]);
@@ -195,7 +239,7 @@ function CreatePost() {
     const handlePublishNow = async () => {
         try {
             // Validation
-            if (Object.keys(generatedContentByPlatform).length === 0) {
+            if (Object.keys(generatedContentByAgent).length === 0) {
                 setError('Please generate content before publishing');
                 return;
             }
@@ -205,20 +249,7 @@ function CreatePost() {
             setSuccessMessage(null);
 
             // Build platforms array with account IDs
-            const platformsData = Object.entries(generatedContentByPlatform).map(([platform, content]) => {
-                const account = connectedAccounts.find(acc => acc.platform.toLowerCase() === platform.toLowerCase());
-
-                if (!account) {
-                    throw new Error(`No connected account found for ${platform}. Please connect it in Settings.`);
-                }
-
-                return {
-                    platform: platform.toLowerCase(),
-                    social_account_id: account.id,
-                    content: content,
-                    image_url: generatedImage || undefined,
-                };
-            });
+            const platformsData = preparePlatformData();
 
             // Publish to platforms
             const response = await postAPI.publishPost({
@@ -233,8 +264,8 @@ function CreatePost() {
 
             // Clear form after successful publish
             setTimeout(() => {
-                setGeneratedContentByPlatform({});
-                setActivePlatformTab(null);
+                setGeneratedContentByAgent({});
+                setActiveAgentTab(null);
                 setPostTopic('');
                 setKeywords('');
                 setSelectedPlatforms([]);
@@ -251,7 +282,7 @@ function CreatePost() {
 
     const handleSchedulePost = () => {
         // Validation
-        if (Object.keys(generatedContentByPlatform).length === 0) {
+        if (Object.keys(generatedContentByAgent).length === 0) {
             setError('Please generate content before scheduling');
             return;
         }
@@ -287,8 +318,8 @@ function CreatePost() {
 
             // Clear form after successful schedule
             setTimeout(() => {
-                setGeneratedContentByPlatform({});
-                setActivePlatformTab(null);
+                setGeneratedContentByAgent({});
+                setActiveAgentTab(null);
                 setPostTopic('');
                 setKeywords('');
                 setSelectedPlatforms([]);
@@ -517,7 +548,7 @@ function CreatePost() {
                                 <button
                                     className="btn-secondary"
                                     onClick={handleRegenerate}
-                                    disabled={loading || Object.keys(generatedContentByPlatform).length === 0}
+                                    disabled={loading || Object.keys(generatedContentByAgent).length === 0}
                                 >
                                     Regenerate
                                 </button>
@@ -530,57 +561,203 @@ function CreatePost() {
                             </button>
                         </section>
 
-                        {/* Generated Output with Tabs */}
+                        {/* Generated Output with Agent Tabs */}
                         <section className="form-section">
                             <h3 className="section-label">Generated Output</h3>
 
-                            {Object.keys(generatedContentByPlatform).length > 0 && (
-                                <div className="platform-tabs">
-                                    {Object.keys(generatedContentByPlatform).map(platform => {
-                                        const platformIcons = {
-                                            // facebook: '📘',
-                                            // instagram: '📷',
-                                            twitter: '🐦',
-                                            linkedin: '💼'
-                                        };
-
-                                        return (
+                            {/* Agent Tabs */}
+                            {Object.keys(generatedContentByAgent).length > 0 && (
+                                <>
+                                    <div className="agent-tabs-container">
+                                        {Object.keys(generatedContentByAgent).map((agentName, index, array) => (
                                             <button
-                                                key={platform}
-                                                className={`platform-tab ${activePlatformTab === platform ? 'active' : ''}`}
-                                                onClick={() => setActivePlatformTab(platform)}
+                                                key={agentName}
+                                                className={`agent-tab ${activeAgentTab === agentName ? 'active' : ''}`}
+                                                onClick={() => {
+                                                    const currentIndex = array.indexOf(activeAgentTab);
+                                                    const newIndex = index;
+                                                    const direction = newIndex > currentIndex ? 'right' : 'left';
+                                                    setSlideDirection(direction);
+                                                    setActiveAgentTab(agentName);
+                                                }}
+                                                title={agentName}
                                             >
-                                                <span className="tab-icon">{platformIcons[platform] || '📄'}</span>
-                                                <span className="tab-name">{platform.charAt(0).toUpperCase() + platform.slice(1)}</span>
+                                                {agentName}
                                             </button>
-                                        );
-                                    })}
-                                </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Platform Cards for Active Agent */}
+                                    {activeAgentTab && generatedContentByAgent[activeAgentTab] && (
+                                        <div className={`platform-cards-grid slide-${slideDirection}`} key={activeAgentTab}>
+                                            {Object.entries(generatedContentByAgent[activeAgentTab].platforms).map(([platform, data]) => {
+                                                // Platform icons with brand colors
+                                                const platformIcons = {
+                                                    twitter: (
+                                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="#000000">
+                                                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                                        </svg>
+                                                    ),
+                                                    linkedin: (
+                                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="#0A66C2">
+                                                            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                                                        </svg>
+                                                    )
+                                                };
+
+                                                const platformNames = {
+                                                    twitter: 'X',
+                                                    linkedin: 'LinkedIn'
+                                                };
+
+                                                return (
+                                                    <div
+                                                        key={platform}
+                                                        className="platform-card"
+                                                    >
+                                                        {/* Card Header */}
+                                                        <div className="platform-card-header">
+                                                            <div className="platform-card-icon">
+                                                                {platformIcons[platform]}
+                                                            </div>
+                                                            <div className="platform-card-info">
+                                                                <div className="platform-card-title">
+                                                                    Write a post on {platformNames[platform] || platform}
+                                                                </div>
+                                                                <div className="platform-card-subtitle">
+                                                                    {activeAgentTab}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Read-only Content */}
+                                                        <div className="platform-card-content">
+                                                            {data.text}
+                                                        </div>
+
+                                                        {/* Strategy Label */}
+                                                        {/* <div style={{
+                                                            fontSize: '0.75rem',
+                                                            color: '#6366f1',
+                                                            fontWeight: '500',
+                                                            marginBottom: '1rem',
+                                                            padding: '0.5rem',
+                                                            background: '#eef2ff',
+                                                            borderRadius: '6px'
+                                                        }}> */}
+                                                        {/* <strong>Strategy:</strong> {generatedContentByAgent[activeAgentTab].agent_description.slice(0, 100)}... */}
+                                                        {/* </div> */}
+
+                                                        {/* Action Buttons */}
+                                                        <div className="platform-card-actions">
+                                                            <button
+                                                                onClick={async () => {
+                                                                    // Save this specific agent's platform content as draft
+                                                                    const prevAgent = activeAgentTab;
+                                                                    const prevData = generatedContentByAgent;
+
+                                                                    // Temporarily set this as the only content
+                                                                    setGeneratedContentByAgent({
+                                                                        [activeAgentTab]: {
+                                                                            ...generatedContentByAgent[activeAgentTab],
+                                                                            platforms: {
+                                                                                [platform]: data
+                                                                            }
+                                                                        }
+                                                                    });
+
+                                                                    await handleSaveAsDraft();
+
+                                                                    // Restore all content
+                                                                    setGeneratedContentByAgent(prevData);
+                                                                    setActiveAgentTab(prevAgent);
+                                                                }}
+                                                                disabled={savingDraft || publishing || scheduling}
+                                                                className="btn-draft platform-card-btn"
+                                                            >
+                                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                </svg>
+                                                                Save Draft
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    // Set this as active content and open schedule modal
+                                                                    const prevData = generatedContentByAgent;
+                                                                    setGeneratedContentByAgent({
+                                                                        [activeAgentTab]: {
+                                                                            ...generatedContentByAgent[activeAgentTab],
+                                                                            platforms: {
+                                                                                [platform]: data
+                                                                            }
+                                                                        }
+                                                                    });
+                                                                    setShowScheduleModal(true);
+                                                                }}
+                                                                disabled={savingDraft || publishing || scheduling}
+                                                                className="btn-schedule platform-card-btn"
+                                                            >
+                                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                                </svg>
+                                                                Schedule
+                                                            </button>
+                                                            <button
+                                                                onClick={async () => {
+                                                                    // Publish this specific agent's platform content
+                                                                    const prevAgent = activeAgentTab;
+                                                                    const prevData = generatedContentByAgent;
+
+                                                                    // Temporarily set this as the only content
+                                                                    setGeneratedContentByAgent({
+                                                                        [activeAgentTab]: {
+                                                                            ...generatedContentByAgent[activeAgentTab],
+                                                                            platforms: {
+                                                                                [platform]: data
+                                                                            }
+                                                                        }
+                                                                    });
+
+                                                                    await handlePublishNow();
+
+                                                                    // Restore all content
+                                                                    setGeneratedContentByAgent(prevData);
+                                                                    setActiveAgentTab(prevAgent);
+                                                                }}
+                                                                disabled={savingDraft || publishing || scheduling}
+                                                                className="btn-publish platform-card-btn"
+                                                            >
+                                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                                                </svg>
+                                                                Publish
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {/* Generated Image Preview */}
+                                    {generatedImage && (
+                                        <div className="image-preview" style={{ marginTop: '1.5rem' }}>
+                                            <img src={generatedImage} alt="Generated preview" />
+                                        </div>
+                                    )}
+                                </>
                             )}
 
-                            <div className="generated-output">
-                                <textarea
-                                    className="textarea-field"
-                                    placeholder="Generated content will appear here..."
-                                    value={activePlatformTab ? generatedContentByPlatform[activePlatformTab] : ''}
-                                    onChange={(e) => {
-                                        if (activePlatformTab) {
-                                            setGeneratedContentByPlatform(prev => ({
-                                                ...prev,
-                                                [activePlatformTab]: e.target.value
-                                            }));
-                                        }
-                                    }}
-                                    rows={8}
-                                />
-
-                                {/* Generated Image Preview */}
-                                {generatedImage && (
-                                    <div className="image-preview">
-                                        <img src={generatedImage} alt="Generated preview" />
-                                    </div>
-                                )}
-                            </div>
+                            {/* Placeholder when no content */}
+                            {Object.keys(generatedContentByAgent).length === 0 && (
+                                <div className="content-empty-state">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <p>Generated content will appear here...</p>
+                                    <p>Select platforms, enter topic & tone, then click "Generate Content"</p>
+                                </div>
+                            )}
                         </section>
 
                         {/* Success Message */}
@@ -603,46 +780,7 @@ function CreatePost() {
                             </div>
                         )}
 
-                        {/* Action Buttons */}
-                        <div className="form-actions">
-                            <button
-                                className="btn-draft"
-                                onClick={handleSaveAsDraft}
-                                disabled={savingDraft || publishing || scheduling}
-                            >
-                                {savingDraft ? 'Saving...' : 'Save as Draft'}
-                            </button>
-                            <button
-                                className="btn-schedule"
-                                onClick={handleSchedulePost}
-                                disabled={savingDraft || publishing || scheduling}
-                            >
-                                {scheduling ? 'Scheduling...' : 'Schedule Post'}
-                            </button>
-                            <button
-                                className="btn-publish"
-                                onClick={handlePublishNow}
-                                disabled={publishing || savingDraft || scheduling || Object.keys(generatedContentByPlatform).length === 0}
-                            >
-                                {publishing ? (
-                                    <>
-                                        <span className="spinner" style={{
-                                            width: '16px',
-                                            height: '16px',
-                                            border: '2px solid rgba(255, 255, 255, 0.3)',
-                                            borderTopColor: 'white',
-                                            borderRadius: '50%',
-                                            animation: 'spin 0.8s linear infinite',
-                                            display: 'inline-block',
-                                            marginRight: '0.5rem'
-                                        }}></span>
-                                        Publishing...
-                                    </>
-                                ) : (
-                                    'Publish Now'
-                                )}
-                            </button>
-                        </div>
+
 
                         {/* Schedule Modal */}
                         {showScheduleModal && (
